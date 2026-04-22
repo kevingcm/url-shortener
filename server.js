@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const path = require('path');
 const { pool, initSchema } = require('./db');
 
@@ -10,6 +11,11 @@ const PORT = process.env.PORT || 3000;
 // Without this, req.protocol returns 'http' even when the user is on HTTPS,
 // and the short URLs we generate get the wrong scheme.
 app.set('trust proxy', 1);
+
+// Allow browser-based clients on other origins (e.g. Flutter web during dev)
+// to call our API. Native mobile clients don't need CORS, but enabling it
+// here means the same API works for any frontend you want to point at it.
+app.use(cors());
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
