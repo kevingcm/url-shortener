@@ -5,6 +5,12 @@ const { pool, initSchema } = require('./db');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind a reverse proxy (Render, Railway, nginx, etc.), the incoming request
+// hits the proxy over HTTPS, then the proxy forwards plain HTTP to our app.
+// Without this, req.protocol returns 'http' even when the user is on HTTPS,
+// and the short URLs we generate get the wrong scheme.
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
