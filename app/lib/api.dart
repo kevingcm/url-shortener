@@ -39,6 +39,7 @@ class ShortenResult {
 
 class Stats {
   final String shortCode;
+  final String shortUrl;
   final String longUrl;
   final String createdAt;
   final int totalClicks;
@@ -47,6 +48,7 @@ class Stats {
 
   Stats({
     required this.shortCode,
+    required this.shortUrl,
     required this.longUrl,
     required this.createdAt,
     required this.totalClicks,
@@ -56,6 +58,7 @@ class Stats {
 
   factory Stats.fromJson(Map<String, dynamic> json) => Stats(
         shortCode: json['short_code'] as String,
+        shortUrl: json['short_url'] as String,
         longUrl: json['long_url'] as String,
         createdAt: json['created_at'].toString(),
         totalClicks: json['total_clicks'] as int,

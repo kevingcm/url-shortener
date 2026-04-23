@@ -62,19 +62,9 @@ class _StatsBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              InkWell(
-                onTap: () => launchUrl(
-                  Uri.parse(stats.longUrl),
-                  mode: LaunchMode.externalApplication,
-                ),
-                child: Text(
-                  '→ ${stats.longUrl}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                      ),
-                ),
-              ),
+              _UrlLink(label: 'Original', url: stats.longUrl),
+              const SizedBox(height: 4),
+              _UrlLink(label: 'Short', url: stats.shortUrl),
               const SizedBox(height: 20),
               Container(
                 width: double.infinity,
@@ -170,6 +160,47 @@ class _EmptyRow extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(vertical: 12),
       child: Text('No clicks yet', style: TextStyle(color: Colors.grey)),
+    );
+  }
+}
+
+class _UrlLink extends StatelessWidget {
+  final String label;
+  final String url;
+  const _UrlLink({required this.label, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 70,
+              child: Text(
+                label,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                url,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: scheme.primary,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

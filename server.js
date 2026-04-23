@@ -118,6 +118,7 @@ app.get('/api/stats/:code', async (req, res) => {
 
   res.json({
     short_code: url.short_code,
+    short_url: `${req.protocol}://${req.get('host')}/${url.short_code}`,
     long_url: url.long_url,
     created_at: url.created_at,
     total_clicks: totalRes.rows[0].total,
