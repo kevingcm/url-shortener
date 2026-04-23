@@ -40,27 +40,35 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
       _result = null;
     });
+
+    ShortenResult? result;
     try {
-      final r = await shortenUrl(url);
-      final updated = await _history.add(HistoryEntry(
-        shortCode: r.shortCode,
-        shortUrl: r.shortUrl,
-        longUrl: r.longUrl,
-        createdAt: DateTime.now(),
-      ));
-      if (mounted) {
-        setState(() {
-          _result = r;
-          _historyEntries = updated;
-        });
-      }
+      result = await shortenUrl(url);
+      if (mounted) setState(() => _result = result);
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
-    } catch (_) {
-      if (mounted) setState(() => _error = 'Network error — check your connection.');
-    } finally {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      // Show the real error so debugging is possible, instead of a vague
+      // "network error" that swallows e.g. type errors or SW issues.
+      if (mounted) setState(() => _error = 'Request failed: $e');
     }
+
+    // History is best-effort — a failure here must NOT hide the success above.
+    if (result != null) {
+      try {
+        final updated = await _history.add(HistoryEntry(
+          shortCode: result.shortCode,
+          shortUrl: result.shortUrl,
+          longUrl: result.longUrl,
+          createdAt: DateTime.now(),
+        ));
+        if (mounted) setState(() => _historyEntries = updated);
+      } catch (e) {
+        debugPrint('history.add failed: $e');
+      }
+    }
+
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _clearHistory() async {
