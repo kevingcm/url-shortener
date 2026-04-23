@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'api.dart';
 
@@ -218,12 +219,24 @@ class _UrlLink extends StatelessWidget {
   final String url;
   const _UrlLink({required this.label, required this.url});
 
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Copied!'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final theme = Theme.of(context);
     return InkWell(
       onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      onLongPress: () => _copy(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
