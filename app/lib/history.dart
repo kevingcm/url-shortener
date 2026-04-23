@@ -1,14 +1,15 @@
 // Local-only history of URLs shortened on this device.
 //
-// Backed by shared_preferences:
-//   - web    → browser localStorage (per browser/profile, not synced)
-//   - mobile → Android SharedPreferences / iOS NSUserDefaults
+// Storage backend is picked at compile time via conditional import:
+//   - web    → dart:html localStorage           (kv_web.dart)
+//   - mobile → shared_preferences (SharedPrefs) (kv_io.dart)
 //
 // There's no server-side history (no login/accounts), so each device
 // has its own list.
 
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'kv_web.dart' if (dart.library.io) 'kv_io.dart';
 
 class HistoryEntry {
   final String shortCode;
@@ -43,8 +44,7 @@ class HistoryService {
   static const _maxEntries = 20;
 
   Future<List<HistoryEntry>> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
+    final raw = await kvGet(_key);
     if (raw == null || raw.isEmpty) return const [];
     try {
       final list = jsonDecode(raw) as List;
@@ -53,7 +53,7 @@ class HistoryService {
           .toList();
     } catch (_) {
       // Corrupted payload; wipe it and start fresh.
-      await prefs.remove(_key);
+      await kvRemove(_key);
       return const [];
     }
   }
@@ -62,16 +62,11 @@ class HistoryService {
   Future<List<HistoryEntry>> add(HistoryEntry entry) async {
     final current = await load();
     final updated = [entry, ...current].take(_maxEntries).toList();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key,
-      jsonEncode(updated.map((e) => e.toJson()).toList()),
-    );
+    await kvSet(_key, jsonEncode(updated.map((e) => e.toJson()).toList()));
     return updated;
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    await kvRemove(_key);
   }
 }
