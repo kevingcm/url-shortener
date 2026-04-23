@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'api.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -61,8 +62,19 @@ class _StatsBody extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('→ ${stats.longUrl}',
-                  style: Theme.of(context).textTheme.bodyLarge),
+              InkWell(
+                onTap: () => launchUrl(
+                  Uri.parse(stats.longUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+                child: Text(
+                  '→ ${stats.longUrl}',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                ),
+              ),
               const SizedBox(height: 20),
               Container(
                 width: double.infinity,
