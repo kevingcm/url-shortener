@@ -6,9 +6,9 @@ A URL shortener with per-link click analytics, built as a hands-on database lear
 *(First request after idle may take ~30s on Render's free tier to spin up.)*
 
 <p align="center">
-  <img src="screenshots/mobile-home.png"    width="260" alt="Home screen — empty input field" />
-  <img src="screenshots/mobile-loading.png" width="260" alt="Shortening in progress" />
-  <img src="screenshots/mobile-result.png"  width="260" alt="Short URL result with Copy and View stats actions" />
+  <img src="screenshots/home-mobile.png"  width="260" alt="Home screen on a mobile-sized viewport with a Recent history list" />
+  <img src="screenshots/stats.png"        width="260" alt="Per-URL stats screen: total clicks, clicks by day, top referrers" />
+  <img src="screenshots/home-desktop.png" width="640" alt="Home screen on a desktop viewport" />
 </p>
 
 ## Features
