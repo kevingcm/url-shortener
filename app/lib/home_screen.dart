@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'api.dart';
+import 'history.dart';
 import 'stats_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,9 +14,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _controller = TextEditingController();
+  final _history = HistoryService();
   ShortenResult? _result;
   String? _error;
   bool _loading = false;
+  List<HistoryEntry> _historyEntries = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final entries = await _history.load();
+    if (!mounted) return;
+    setState(() => _historyEntries = entries);
+  }
 
   Future<void> _shorten() async {
     final url = _controller.text.trim();
@@ -27,7 +42,18 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     try {
       final r = await shortenUrl(url);
-      if (mounted) setState(() => _result = r);
+      final updated = await _history.add(HistoryEntry(
+        shortCode: r.shortCode,
+        shortUrl: r.shortUrl,
+        longUrl: r.longUrl,
+        createdAt: DateTime.now(),
+      ));
+      if (mounted) {
+        setState(() {
+          _result = r;
+          _historyEntries = updated;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } catch (_) {
@@ -35,6 +61,12 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _clearHistory() async {
+    await _history.clear();
+    if (!mounted) return;
+    setState(() => _historyEntries = const []);
   }
 
   @override
@@ -90,10 +122,70 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 20),
                   _ResultCard(result: _result!),
                 ],
+                if (_historyEntries.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Recent',
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _clearHistory,
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ..._historyEntries.map(
+                    (e) => _HistoryTile(entry: e),
+                  ),
+                ],
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HistoryTile extends StatelessWidget {
+  final HistoryEntry entry;
+  const _HistoryTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        dense: true,
+        title: Text(
+          entry.shortUrl,
+          style: TextStyle(
+            color: scheme.primary,
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          entry.longUrl,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: scheme.onSurfaceVariant),
+        ),
+        trailing: const Icon(Icons.bar_chart, size: 20),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => StatsScreen(shortCode: entry.shortCode),
+            ),
+          );
+        },
       ),
     );
   }
