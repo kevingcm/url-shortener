@@ -22,6 +22,7 @@ class ShortlyApp extends StatelessWidget {
         // Lexend across the whole app. google_fonts fetches the files on
         // first launch (cached after that); no .ttf bundling required.
         textTheme: GoogleFonts.lexendTextTheme(base.textTheme),
+        appBarTheme: const AppBarTheme(centerTitle: true),
       ),
       home: const HomeScreen(),
     );
