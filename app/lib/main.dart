@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'home_screen.dart';
 
 void main() {
@@ -10,12 +11,17 @@ class ShortlyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final base = ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF667EEA)),
+      useMaterial3: true,
+    );
     return MaterialApp(
       title: 'Shortly',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF667EEA)),
-        useMaterial3: true,
+      theme: base.copyWith(
+        // Lexend across the whole app. google_fonts fetches the files on
+        // first launch (cached after that); no .ttf bundling required.
+        textTheme: GoogleFonts.lexendTextTheme(base.textTheme),
       ),
       home: const HomeScreen(),
     );
