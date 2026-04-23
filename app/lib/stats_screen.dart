@@ -11,39 +11,84 @@ class StatsScreen extends StatefulWidget {
 }
 
 class _StatsScreenState extends State<StatsScreen> {
-  late Future<Stats> _future;
+  Stats? _stats;
+  String? _error;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _future = fetchStats(widget.shortCode);
+    _load();
+  }
+
+  // Fetches fresh stats. Keeps the previous _stats in place during refresh
+  // so the UI doesn't flash to empty while waiting.
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    try {
+      final stats = await fetchStats(widget.shortCode);
+      if (!mounted) return;
+      setState(() {
+        _stats = stats;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final refreshingInAppBar = _loading && _stats != null;
     return Scaffold(
-      appBar: AppBar(title: Text('/${widget.shortCode}')),
-      body: FutureBuilder<Stats>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'Failed to load stats: ${snap.error}',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-          return _StatsBody(stats: snap.data!);
-        },
+      appBar: AppBar(
+        title: Text('/${widget.shortCode}'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _loading ? null : _load,
+            icon: refreshingInAppBar
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: _buildBody(),
       ),
     );
+  }
+
+  Widget _buildBody() {
+    // Initial load: full-screen spinner (no data to show yet).
+    if (_loading && _stats == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    // First-load error: show error inside a scrollable so pull-to-refresh
+    // still works (RefreshIndicator needs a scrollable child).
+    if (_stats == null && _error != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 80),
+        children: [
+          Text(
+            'Failed to load stats:\n$_error\n\nPull down to try again.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+    return _StatsBody(stats: _stats!);
   }
 }
 
@@ -55,6 +100,10 @@ class _StatsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
+      // AlwaysScrollable lets RefreshIndicator trigger even if the content
+      // fits on screen (without this, pull-to-refresh only works when you
+      // already have enough clicks to make the view scrollable).
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       child: Center(
         child: ConstrainedBox(
