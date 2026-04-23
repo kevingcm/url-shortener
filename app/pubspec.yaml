@@ -104,9 +104,13 @@ flutter_launcher_icons:
 
 # Native splash screen generation.
 # Run:  dart run flutter_native_splash:create
+#
+# Uses splash.png (transparent background, white arrow) so the solid
+# background color below shows through. icon.png has its own gradient
+# background so it'd look boxed-in here.
 flutter_native_splash:
   color: "#667EEA"
-  image: assets/icon.png
+  image: assets/splash.png
   android_12:
     color: "#667EEA"
-    image: assets/icon.png
+    image: assets/splash.png

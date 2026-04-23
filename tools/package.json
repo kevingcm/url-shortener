@@ -1,0 +1,9 @@
+{
+  "name": "url-shortener-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-off scripts for the url_shortener project (icon/splash generation).",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2"
+  }
+}

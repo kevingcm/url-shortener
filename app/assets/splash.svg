@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- White arrow on transparent background — used for the native splash screen.
+       The splash background color is set via flutter_native_splash config. -->
+  <path d="M 80 256 L 400 256 M 320 130 L 440 256 L 320 382"
+        stroke="white" stroke-width="68" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
