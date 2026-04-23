@@ -2,9 +2,15 @@
 // All HTTP calls live here so the UI code stays clean.
 
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
-const apiBaseUrl = 'https://url-shortener-mvzx.onrender.com';
+// On web, the Flutter app is served by the same Express server as the API,
+// so relative paths work — and the same build works at any domain.
+// On mobile (Android APK, iOS), there's no "current origin", so we hard-code
+// the production backend.
+const _mobileApiBaseUrl = 'https://url-shortener-mvzx.onrender.com';
+final String apiBaseUrl = kIsWeb ? '' : _mobileApiBaseUrl;
 
 class ApiException implements Exception {
   final String message;
