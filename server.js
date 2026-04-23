@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 const { pool, initSchema } = require('./db');
 
 const app = express();
@@ -39,14 +40,53 @@ function isValidHttpUrl(str) {
   }
 }
 
+// Hosts we refuse to shorten. Two goals:
+//   1. Prevent chained shortener abuse (our domain cloaking someone else's).
+//   2. Prevent loops (shortening our own URLs, which would redirect forever).
+const BLOCKED_HOSTS = new Set([
+  // Known URL shorteners (keep short; a real service would source a larger list)
+  'bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly',
+  'short.io', 'is.gd', 'buff.ly', 'rebrand.ly', 't.ly',
+  'cutt.ly', 'adf.ly', 'shorturl.at', 'tiny.cc',
+  // Self: added dynamically below based on request host
+]);
+
+function isBlockedUrl(str, selfHost) {
+  try {
+    const host = new URL(str).hostname.toLowerCase();
+    if (BLOCKED_HOSTS.has(host)) return true;
+    if (selfHost && host === selfHost.toLowerCase().split(':')[0]) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// 30 shortenings per 10 minutes per IP. Generous for humans, painful for bots.
+// Other endpoints are read-only or cheap, so no limit there.
+const shortenLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many requests. Please try again in a few minutes.',
+  },
+});
+
 // ─── Routes ─────────────────────────────────────────────────────────────────
 // Note: Postgres uses $1, $2, ... placeholders instead of SQLite's ?
 // Every DB call is async, so route handlers are `async` and use `await`.
 
-app.post('/api/shorten', async (req, res) => {
+app.post('/api/shorten', shortenLimiter, async (req, res) => {
   const { url } = req.body;
   if (!url || !isValidHttpUrl(url)) {
     return res.status(400).json({ error: 'Please provide a valid http(s) URL' });
+  }
+  if (isBlockedUrl(url, req.get('host'))) {
+    return res.status(400).json({
+      error: 'That host is not allowed (another shortener or this service itself).',
+    });
   }
 
   let shortCode;
