@@ -56,19 +56,30 @@ class Stats {
     required this.topReferrers,
   });
 
-  factory Stats.fromJson(Map<String, dynamic> json) => Stats(
-        shortCode: json['short_code'] as String,
-        shortUrl: json['short_url'] as String,
-        longUrl: json['long_url'] as String,
-        createdAt: json['created_at'].toString(),
-        totalClicks: json['total_clicks'] as int,
-        clicksByDay: (json['clicks_by_day'] as List)
-            .map((e) => DayCount.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        topReferrers: (json['top_referrers'] as List)
-            .map((e) => ReferrerCount.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+  factory Stats.fromJson(Map<String, dynamic> json) {
+    final code = json['short_code'] as String;
+    // Fall back gracefully if the backend is older than this client and
+    // doesn't include short_url yet: build it ourselves.
+    final shortUrl = (json['short_url'] as String?) ?? _deriveShortUrl(code);
+    return Stats(
+      shortCode: code,
+      shortUrl: shortUrl,
+      longUrl: json['long_url'] as String,
+      createdAt: json['created_at'].toString(),
+      totalClicks: json['total_clicks'] as int,
+      clicksByDay: (json['clicks_by_day'] as List)
+          .map((e) => DayCount.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      topReferrers: (json['top_referrers'] as List)
+          .map((e) => ReferrerCount.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+String _deriveShortUrl(String code) {
+  final base = apiBaseUrl.isEmpty ? Uri.base.origin : apiBaseUrl;
+  return '$base/$code';
 }
 
 class DayCount {
