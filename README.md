@@ -1,23 +1,26 @@
 # Shortly — URL shortener with analytics
 
-A small URL shortener that tracks per-link clicks over time. Built as a hands-on database learning project — SQL is raw (no ORM), the project includes a migration from SQLite to PostgreSQL to surface the real differences between them, and ships with a web frontend **and** a Flutter mobile client both talking to the same API.
+A URL shortener with per-link click analytics, built as a hands-on database learning project. SQL is raw (no ORM) and the project includes a SQLite → PostgreSQL migration so the differences between them are visible, not hidden. **One Flutter codebase powers the web and the Android app** — both hit the same Node.js + Express API backed by PostgreSQL on Neon.
 
 **Live demo:** https://url-shortener-mvzx.onrender.com
 *(First request after idle may take ~30s on Render's free tier to spin up.)*
 
 <p align="center">
-  <img src="screenshots/mobile-home.png"     width="260" alt="Home screen — empty input field" />
-  <img src="screenshots/mobile-loading.png"  width="260" alt="Shortening in progress" />
-  <img src="screenshots/mobile-result.png"   width="260" alt="Short URL result with Copy and View stats actions" />
+  <img src="screenshots/mobile-home.png"    width="260" alt="Home screen — empty input field" />
+  <img src="screenshots/mobile-loading.png" width="260" alt="Shortening in progress" />
+  <img src="screenshots/mobile-result.png"  width="260" alt="Short URL result with Copy and View stats actions" />
 </p>
 
 ## Features
 
 - Shorten any `http(s)` URL to a 6-character code
-- Redirect from `/:code` to the original URL
-- Record every click with timestamp, referrer, and user-agent
+- Redirect `/:code` → original URL (302)
+- Record every click with timestamp, referrer, user-agent
 - Per-URL stats: total clicks, clicks by day, top referrers
-- **Web UI** (served by the backend) and **Flutter app** (web/Android) — both hit the same JSON API
+- Pull-to-refresh and refresh button on the stats screen
+- Tap a URL to open it, long-press to copy
+- Local **history** of the last 20 URLs shortened on this device, persisted via `shared_preferences`
+- Custom launcher icon, native splash screen, and PWA icons
 
 ## Tech stack
 
@@ -26,25 +29,25 @@ A small URL shortener that tracks per-link clicks over time. Built as a hands-on
 - **PostgreSQL** on [Neon](https://neon.tech) (production) — started on **SQLite** and migrated, to learn the differences
 - Deployed on [Render](https://render.com)
 
-**Web frontend**
-- Vanilla HTML / CSS / JS, served by the backend
+**Frontend (web + mobile)**
+- **Flutter** (Dart) — one codebase targets browser and Android
+- Material 3 + **Lexend** font (via `google_fonts`)
+- Web build output is committed to `public/` and served by Express as static assets
 
-**Mobile app** (`app/`)
-- **Flutter** (Dart) — targets web + Android from one codebase
-- Talks to the live backend over HTTPS
+## Running locally
 
-## Running the backend
+### Backend
 
 Prerequisites: Node 20+, a PostgreSQL connection string (Neon free tier works).
 
 ```bash
 npm install
-cp .env.example .env           # edit .env and paste your DATABASE_URL
-npm run migrate:pg             # create schema (+ copies any local urls.db data if present)
+cp .env.example .env           # edit .env, paste your DATABASE_URL
+npm run migrate:pg             # creates schema (+ copies urls.db if present)
 npm start                      # http://localhost:3000
 ```
 
-## Running the Flutter app
+### Flutter app
 
 Prerequisites: Flutter 3.19+.
 
@@ -56,7 +59,21 @@ flutter run -d chrome          # fastest dev loop — opens in Chrome
 flutter run                    # uses a connected Android device / emulator
 ```
 
-The API base URL lives in [`app/lib/api.dart`](app/lib/api.dart) — point it at `http://localhost:3000` to run against a local backend, or leave it at the Render URL for the live one.
+The Dart client picks its API base URL at runtime (`app/lib/api.dart`): on web it uses relative URLs (same origin as the Flutter web app's host); on mobile it hard-codes the production Render URL.
+
+### Rebuilding the unified web frontend
+
+Every web UI change requires rebuilding Flutter → committing `public/`:
+
+```bash
+cd app
+flutter build web --release
+cd ..
+rm -rf public && cp -r app/build/web public
+git add app public && git commit -m "..." && git push
+```
+
+Render auto-deploys on push to `main`. (Render's build environment doesn't have Flutter; that's why the built output is committed rather than built on the server.)
 
 ## Running ad-hoc SQL
 
@@ -74,13 +91,17 @@ npm run sql -- queries/clicks_per_url.sql
 ├── sql.js                    Tiny runner for ad-hoc .sql files
 ├── migrate-to-postgres.js    One-off: creates schema + copies SQLite → PG
 ├── queries/                  Example SQL files
-├── public/                   Web frontend (index.html, stats.html, ...)
-└── app/                      Flutter mobile client (web + Android)
+├── public/                   Flutter web build output (served by Express)
+├── tools/                    One-off Node scripts (SVG → PNG icon/favicon generation)
+└── app/                      Flutter project — web + Android from one codebase
+    ├── assets/               icon.svg / icon.png / splash.svg / splash.png
+    ├── web/                  web-specific assets (favicon, PWA icons, index.html template)
     └── lib/
-        ├── main.dart
-        ├── home_screen.dart
-        ├── stats_screen.dart
-        └── api.dart
+        ├── main.dart         entry + theme (Lexend, Material 3)
+        ├── home_screen.dart  URL input, result card, local history list
+        ├── stats_screen.dart pull-to-refresh + tap/long-press URL links
+        ├── api.dart          HTTP client, shortenUrl() / fetchStats()
+        └── history.dart      shared_preferences-backed local history
 ```
 
 ## Data model
@@ -104,10 +125,25 @@ Foreign keys are `ON DELETE CASCADE`, so deleting a URL drops its clicks atomica
 
 ## API
 
-| Method | Path               | Description                                |
-|--------|--------------------|--------------------------------------------|
-| POST   | `/api/shorten`     | Body: `{ "url": "https://…" }` → short URL |
-| GET    | `/api/stats/:code` | JSON stats for a short code                |
-| GET    | `/:code`           | 302 redirect to the long URL               |
+| Method | Path               | Description                                     |
+|--------|--------------------|-------------------------------------------------|
+| POST   | `/api/shorten`     | Body: `{ "url": "https://…" }` → `{ short_code, short_url, long_url }` |
+| GET    | `/api/stats/:code` | JSON: short/long URL, total clicks, clicks by day (last 30), top referrers |
+| GET    | `/:code`           | Records a click, 302 redirects to the long URL  |
 
 CORS is enabled (`*`) so the same API can serve any frontend you point at it.
+
+## Regenerating icons and splash
+
+Source assets live in `app/assets/` as SVG. To regenerate PNGs after editing:
+
+```bash
+cd tools
+npm install
+node svg-to-png.js ../app/assets/icon.svg   ../app/assets/icon.png   1024
+node svg-to-png.js ../app/assets/splash.svg ../app/assets/splash.png 512
+node gen-web-icons.js                        # favicon + PWA icons for app/web/
+cd ../app
+flutter pub run flutter_launcher_icons       # Android launcher
+dart run flutter_native_splash:create        # native splash
+```
